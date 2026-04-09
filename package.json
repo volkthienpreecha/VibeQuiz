@@ -20,7 +20,16 @@
     "vscode-extension"
   ],
   "activationEvents": [
-    "onCommand:vibeQuiz.quizMe"
+    "onStartupFinished",
+    "onView:vibeQuiz.sidebar",
+    "onCommand:vibeQuiz.quizMe",
+    "onCommand:vibeQuiz.setApiKey",
+    "onCommand:vibeQuiz.clearApiKey",
+    "onCommand:vibeQuiz.enableAiMode",
+    "onCommand:vibeQuiz.useHeuristicMode",
+    "onCommand:vibeQuiz.selectAiProvider",
+    "onCommand:vibeQuiz.setAiModel",
+    "onCommand:vibeQuiz.openSettings"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -28,9 +37,134 @@
       {
         "command": "vibeQuiz.quizMe",
         "title": "Quiz Me",
+        "category": "VibeQuiz",
+        "icon": {
+          "light": "media/vibequiz-command-light.svg",
+          "dark": "media/vibequiz-command-dark.svg"
+        }
+      },
+      {
+        "command": "vibeQuiz.setApiKey",
+        "title": "Set API Key",
+        "category": "VibeQuiz"
+      },
+      {
+        "command": "vibeQuiz.clearApiKey",
+        "title": "Clear API Key",
+        "category": "VibeQuiz"
+      },
+      {
+        "command": "vibeQuiz.enableAiMode",
+        "title": "Enable AI Mode",
+        "category": "VibeQuiz"
+      },
+      {
+        "command": "vibeQuiz.useHeuristicMode",
+        "title": "Use Heuristic Mode",
+        "category": "VibeQuiz"
+      },
+      {
+        "command": "vibeQuiz.selectAiProvider",
+        "title": "Select AI Provider",
+        "category": "VibeQuiz"
+      },
+      {
+        "command": "vibeQuiz.setAiModel",
+        "title": "Set AI Model",
+        "category": "VibeQuiz"
+      },
+      {
+        "command": "vibeQuiz.openSettings",
+        "title": "Open AI Settings",
         "category": "VibeQuiz"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "VibeQuiz",
+      "properties": {
+        "vibeQuiz.mode": {
+          "type": "string",
+          "enum": [
+            "heuristic",
+            "ai"
+          ],
+          "default": "heuristic",
+          "markdownDescription": "Controls whether VibeQuiz uses local heuristics or AI-assisted generation. API keys are never stored here; they live in VS Code Secret Storage.",
+          "scope": "machine-overridable"
+        },
+        "vibeQuiz.ai.provider": {
+          "type": "string",
+          "enum": [
+            "openai",
+            "anthropic",
+            "gemini",
+            "openaiCompatible"
+          ],
+          "default": "openai",
+          "markdownDescription": "AI provider used when `vibeQuiz.mode` is set to `ai`. `openaiCompatible` is intended for Ollama and other OpenAI-style backends.",
+          "scope": "machine-overridable"
+        },
+        "vibeQuiz.ai.model": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Model name to use for AI-assisted quiz generation. Leave blank to use the provider default selected by VibeQuiz.",
+          "scope": "machine-overridable"
+        },
+        "vibeQuiz.ai.baseUrl": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Base URL for the provider API. Leave blank to use the provider default. For `openaiCompatible`, a local Ollama-style default is used.",
+          "scope": "machine-overridable"
+        },
+        "vibeQuiz.ai.anthropicVersion": {
+          "type": "string",
+          "default": "2023-06-01",
+          "markdownDescription": "Anthropic API version header used when the provider is `anthropic`.",
+          "scope": "machine-overridable"
+        },
+        "vibeQuiz.ai.timeoutMs": {
+          "type": "number",
+          "default": 20000,
+          "minimum": 3000,
+          "markdownDescription": "Timeout for AI requests in milliseconds.",
+          "scope": "machine-overridable"
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "vibeQuiz",
+          "title": "VibeQuiz",
+          "icon": "media/vibequiz-activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "vibeQuiz": [
+        {
+          "type": "webview",
+          "id": "vibeQuiz.sidebar",
+          "name": "Session Check"
+        }
+      ]
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "vibeQuiz.quizMe",
+          "when": "editorTextFocus",
+          "group": "navigation@9"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "vibeQuiz.quizMe",
+          "when": "view == vibeQuiz.sidebar",
+          "group": "navigation@1"
+        }
+      ]
+    }
   },
   "scripts": {
     "compile": "tsc -p ./",

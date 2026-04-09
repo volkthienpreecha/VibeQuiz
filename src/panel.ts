@@ -1,4 +1,4 @@
-﻿import * as vscode from 'vscode';
+import * as vscode from 'vscode';
 import { PanelState, SubmitPayload, SubmitResponse } from './types';
 
 type SubmitHandler = (payload: SubmitPayload) => Promise<SubmitResponse>;
@@ -85,6 +85,7 @@ export class VibeQuizPanel {
             ...this.state,
             feedback: response.feedback,
             stats: response.stats,
+            resultSummary: response.summary,
           };
           await this.panel.webview.postMessage({
             type: 'quizFeedback',

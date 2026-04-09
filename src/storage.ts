@@ -1,4 +1,4 @@
-﻿import * as vscode from 'vscode';
+import * as vscode from 'vscode';
 import { QuizStats } from './types';
 
 const STORAGE_KEY = 'vibeQuiz.stats';

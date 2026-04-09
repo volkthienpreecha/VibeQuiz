@@ -1,4 +1,4 @@
-﻿export interface QuizContext {
+export interface QuizContext {
   fileName: string;
   filePath: string;
   languageId: string;
@@ -6,7 +6,7 @@
   selectionText?: string;
   selectionRange?: string;
   focusLabel: string;
-  focusKind: 'selection' | 'symbol' | 'file';
+  focusKind: 'selection' | 'change' | 'symbol' | 'file';
   focusSnippet: string;
   symbolName?: string;
   imports: string[];
@@ -17,7 +17,21 @@
   hasErrorHandling: boolean;
   hasStateMutation: boolean;
   candidateFunctions: string[];
+  changeContext?: ChangeContext;
 }
+
+export interface ChangeContext {
+  source: 'dirty-buffer' | 'git-head' | 'last-commit';
+  type: 'added' | 'modified' | 'removed';
+  label: string;
+  range: string;
+  lineCount: number;
+  currentSnippet: string;
+  previousSnippet?: string;
+}
+
+export type QuizMode = 'heuristic' | 'ai';
+export type AiProvider = 'openai' | 'anthropic' | 'gemini' | 'openaiCompatible';
 
 export type QuestionType =
   | 'purpose'
@@ -28,11 +42,21 @@ export type QuestionType =
   | 'stateChange'
   | 'edgeCase';
 
+export type QuizOptionId = 'a' | 'b' | 'c' | 'd';
+
+export interface QuizOption {
+  id: QuizOptionId;
+  text: string;
+}
+
 export interface QuizQuestion {
   id: string;
   type: QuestionType;
   prompt: string;
   target?: string;
+  options: QuizOption[];
+  correctOptionId: QuizOptionId;
+  explanation: string;
 }
 
 export interface ReflectionItem {
@@ -50,16 +74,33 @@ export interface QuizStats {
   recentWeakAreas: string[];
 }
 
+export interface QuizResultSummary {
+  correct: number;
+  total: number;
+  skipped: number;
+}
+
+export interface ModeStatus {
+  mode: QuizMode;
+  label: string;
+  detail: string;
+  provider?: AiProvider;
+  model?: string;
+  keyConfigured: boolean;
+}
+
 export interface PanelState {
   kind: 'quiz' | 'empty';
   title: string;
   subtitle: string;
   contextTag?: string;
+  modeStatus: ModeStatus;
   emptyMessage?: string;
   quizContext?: QuizContext;
   questions?: QuizQuestion[];
   stats: QuizStats;
   feedback?: ReflectionItem[];
+  resultSummary?: QuizResultSummary;
 }
 
 export interface SubmitPayload {
@@ -69,6 +110,7 @@ export interface SubmitPayload {
 export interface SubmitResponse {
   feedback: ReflectionItem[];
   stats: QuizStats;
+  summary: QuizResultSummary;
 }
 
 export type ExtractionResult =
