@@ -1,0 +1,47 @@
+{
+  "name": "vibequiz",
+  "displayName": "VibeQuiz",
+  "description": "A VS Code extension that quizzes you on the code you just wrote.",
+  "version": "0.0.1",
+  "publisher": "vibequiz-dev",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Education",
+    "Other"
+  ],
+  "keywords": [
+    "quiz",
+    "reflection",
+    "learning",
+    "developer-tools",
+    "vscode-extension"
+  ],
+  "activationEvents": [
+    "onCommand:vibeQuiz.quizMe"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "vibeQuiz.quizMe",
+        "title": "Quiz Me",
+        "category": "VibeQuiz"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "test": "echo \"No automated tests configured yet\""
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.28",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.6.2",
+    "typescript": "^5.8.3"
+  }
+}
