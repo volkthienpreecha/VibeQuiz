@@ -1,4 +1,4 @@
-import { QuestionType, QuizContext, QuizOptionId, QuizQuestion } from './types';
+import { ChangeChunk, QuestionType, QuizContext, QuizOptionId, QuizQuestion } from './types';
 
 interface QuestionBlueprint {
   type: QuestionType;
@@ -11,6 +11,10 @@ interface QuestionBlueprint {
 const OPTION_IDS: QuizOptionId[] = ['a', 'b', 'c', 'd'];
 
 export function generateQuizQuestions(context: QuizContext): QuizQuestion[] {
+  if (context.isChunkedSession && context.changeChunks && context.changeChunks.length > 0) {
+    return generateChunkedQuizQuestions(context);
+  }
+
   const questions: QuizQuestion[] = [];
   const target = getTargetLabel(context);
 
@@ -64,6 +68,61 @@ export function generateQuizQuestions(context: QuizContext): QuizQuestion[] {
     if (questions.length === 5) {
       break;
     }
+  }
+
+  return questions.slice(0, 5);
+}
+
+function generateChunkedQuizQuestions(context: QuizContext): QuizQuestion[] {
+  const chunks = (context.changeChunks ?? []).slice(0, 4);
+  const questions: QuizQuestion[] = [];
+  let position = 1;
+
+  for (const chunk of chunks) {
+    if (questions.length >= 5) {
+      break;
+    }
+
+    const chunkContext = buildChunkContext(context, chunk);
+    const target = getChunkTargetLabel(chunk);
+    questions.push(createQuestion(buildPurposeQuestion(chunkContext, target), position, target, chunk));
+    position += 1;
+  }
+
+  const secondaryBuilders = chunks.map((chunk) => ({
+    chunk,
+    builder: selectSecondaryBuilder(buildChunkContext(context, chunk)),
+  }));
+
+  for (const item of secondaryBuilders) {
+    if (questions.length >= 5) {
+      break;
+    }
+
+    const chunkContext = buildChunkContext(context, item.chunk);
+    const target = getChunkTargetLabel(item.chunk);
+    questions.push(createQuestion(item.builder(chunkContext, target), position, target, item.chunk));
+    position += 1;
+  }
+
+  const fallbackBuilders = [
+    buildDependencyQuestion,
+    buildGuaranteeQuestion,
+    buildDesignQuestion,
+    buildEdgeCaseQuestion,
+    buildStateQuestion,
+  ];
+
+  for (const builder of fallbackBuilders) {
+    if (questions.length >= 5 || chunks.length === 0) {
+      break;
+    }
+
+    const topChunk = chunks[0];
+    const chunkContext = buildChunkContext(context, topChunk);
+    const target = getChunkTargetLabel(topChunk);
+    questions.push(createQuestion(builder(chunkContext, target), position, target, topChunk));
+    position += 1;
   }
 
   return questions.slice(0, 5);
@@ -282,7 +341,12 @@ function buildEdgeCaseQuestion(context: QuizContext, target: string): QuestionBl
   };
 }
 
-function createQuestion(blueprint: QuestionBlueprint, position: number, target: string): QuizQuestion {
+function createQuestion(
+  blueprint: QuestionBlueprint,
+  position: number,
+  target: string,
+  chunk?: Pick<ChangeChunk, 'id' | 'label'>,
+): QuizQuestion {
   const normalizedOptions = uniqueOptions(blueprint.correctText, blueprint.distractors);
   const correctIndex = position % OPTION_IDS.length;
   const orderedTexts = [...normalizedOptions];
@@ -294,6 +358,8 @@ function createQuestion(blueprint: QuestionBlueprint, position: number, target: 
     type: blueprint.type,
     prompt: blueprint.prompt,
     target,
+    chunkId: chunk?.id,
+    chunkLabel: chunk?.label,
     options: trimmedTexts.map((text, index) => ({
       id: OPTION_IDS[index],
       text,
@@ -323,6 +389,60 @@ function uniqueOptions(correctText: string, distractors: string[]): string[] {
   }
 
   return filtered.slice(0, 3);
+}
+
+function buildChunkContext(context: QuizContext, chunk: ChangeChunk): QuizContext {
+  const analysisText = `${chunk.currentSnippet}\n${chunk.previousSnippet ?? ''}`;
+
+  return {
+    ...context,
+    focusLabel: chunk.label,
+    focusSnippet: chunk.currentSnippet,
+    symbolName: chunk.symbolName ?? context.symbolName,
+    candidateFunctions: chunk.symbolName ? [chunk.symbolName] : context.candidateFunctions,
+    hasConditionals: /\bif\b|\bswitch\b|\?.+:/m.test(analysisText),
+    hasValidation: /validate|invalid|required|guard|assert|sanitize|schema|null|undefined|empty|length\s*[<>=]/im.test(analysisText),
+    hasAsync: /\basync\b|\bawait\b|Promise\b/im.test(analysisText),
+    hasErrorHandling: /\btry\b|\bcatch\b|\bthrow\b|reject\(|console\.error/im.test(analysisText),
+    hasStateMutation: /set[A-Z]\w*\(|dispatch\(|push\(|splice\(|assign\(|update[A-Z]\w*\(|save[A-Z]\w*\(|create[A-Z]\w*\(|delete[A-Z]\w*\(/.test(analysisText),
+    changeContext: {
+      source: context.changeContext?.source ?? 'git-head',
+      type: chunk.type,
+      label: chunk.label,
+      range: chunk.range,
+      lineCount: chunk.lineCount,
+      currentSnippet: chunk.currentSnippet,
+      previousSnippet: chunk.previousSnippet,
+    },
+    changeChunks: [chunk],
+    isChunkedSession: true,
+  };
+}
+
+function getChunkTargetLabel(chunk: ChangeChunk): string {
+  if (chunk.symbolName) {
+    return `\`${chunk.symbolName}\` (${chunk.range})`;
+  }
+
+  return `${chunk.label} (${chunk.range})`;
+}
+
+function selectSecondaryBuilder(
+  context: QuizContext,
+): (context: QuizContext, target: string) => QuestionBlueprint {
+  if (context.hasValidation || context.hasErrorHandling || context.hasConditionals) {
+    return buildFailureModeQuestion;
+  }
+
+  if (context.hasStateMutation || context.hasAsync) {
+    return buildStateQuestion;
+  }
+
+  if (context.imports.length > 0 || context.exports.length > 0 || context.candidateFunctions.length > 0) {
+    return buildDependencyQuestion;
+  }
+
+  return buildGuaranteeQuestion;
 }
 
 function getTargetLabel(context: QuizContext): string {

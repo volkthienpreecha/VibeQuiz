@@ -27,10 +27,39 @@ function render() {
       <section class="panel-card launch-card">
         <button class="primary-button" data-command="vibeQuiz.quizMe">Quiz Me</button>
         <div class="button-grid">
+          <button class="secondary-button" data-command="${escapeHtml(state.sessionPrimaryCommand || 'vibeQuiz.startSession')}">${escapeHtml(state.sessionPrimaryLabel || 'Start Session')}</button>
           <button class="secondary-button" data-command="${escapeHtml(state.modeToggleCommand)}">${escapeHtml(state.modeToggleLabel)}</button>
           <button class="secondary-button" data-command="vibeQuiz.setApiKey">Set API Key</button>
           <button class="secondary-button" data-command="vibeQuiz.selectAiProvider">Select Provider</button>
           <button class="secondary-button" data-command="vibeQuiz.openSettings">Open Settings</button>
+        </div>
+      </section>
+
+      <section class="panel-card info-card">
+        <div class="section-head">
+          <p class="section-kicker">Session Boundary</p>
+          <span class="mini-pill">${escapeHtml(state.sessionActive ? 'Active' : 'Manual')}</span>
+        </div>
+        <h2>${escapeHtml(state.sessionLabel || 'No active session')}</h2>
+        <p class="focus-line">${escapeHtml(state.sessionActive ? 'Manual vibe-coding session' : 'Start a session before you prompt and edit'})}</p>
+        <p class="supporting-copy">${escapeHtml(state.sessionDetail || 'Session changes will be diffed against a local baseline when you end the session.')}</p>
+      </section>
+
+      <section class="panel-card info-card">
+        <div class="section-head">
+          <p class="section-kicker">Launch Source</p>
+          <span class="mini-pill">${escapeHtml(state.sourceModeLabel || 'Current File')}</span>
+        </div>
+        <h2>${escapeHtml(state.selectedFileLabel || 'Auto')}</h2>
+        <p class="focus-line">${escapeHtml(state.selectedFolderLabel || 'Auto')}</p>
+        <p class="supporting-copy supporting-copy-tight">Git range: ${escapeHtml(state.gitRangeLabel || 'HEAD~1..HEAD')}</p>
+        <p class="supporting-copy">${escapeHtml(state.sourceDescription || 'Use the active file plus local diff or commit context.')}</p>
+        <div class="button-grid">
+          <button class="secondary-button" data-command="vibeQuiz.selectSourceMode">Select Source</button>
+          <button class="secondary-button" data-command="vibeQuiz.selectSourceFile">Choose File</button>
+          <button class="secondary-button" data-command="vibeQuiz.useCurrentFile">Use Current File</button>
+          <button class="secondary-button" data-command="vibeQuiz.selectWorkspaceFolder">Choose Folder</button>
+          <button class="secondary-button" data-command="vibeQuiz.setGitDiffRange">Set Git Range</button>
         </div>
       </section>
 

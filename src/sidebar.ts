@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
-import { createModeStatus, getAiSettings, requiresApiKey } from './config';
+import { createModeStatus, getAiSettings, getLaunchSettings, requiresApiKey, sourceModeLabel } from './config';
 import { extractQuizContext } from './contextExtractor';
 import { getApiKey } from './secrets';
+import { getActiveSession } from './session';
 import { getQuizStats } from './storage';
 
 interface SidebarState {
@@ -12,6 +13,16 @@ interface SidebarState {
   providerLabel: string;
   providerModel: string;
   providerStatus: string;
+  sourceModeLabel: string;
+  sourceDescription: string;
+  sessionActive: boolean;
+  sessionLabel: string;
+  sessionDetail: string;
+  sessionPrimaryCommand: string;
+  sessionPrimaryLabel: string;
+  selectedFileLabel: string;
+  selectedFolderLabel: string;
+  gitRangeLabel: string;
   activeFile: string;
   activeFocus: string;
   activeMeta: string;
@@ -25,11 +36,18 @@ interface SidebarState {
 const SIDEBAR_VIEW_ID = 'vibeQuiz.sidebar';
 const COMMANDS = new Set([
   'vibeQuiz.quizMe',
+  'vibeQuiz.startSession',
+  'vibeQuiz.endSession',
   'vibeQuiz.setApiKey',
   'vibeQuiz.selectAiProvider',
   'vibeQuiz.openSettings',
   'vibeQuiz.enableAiMode',
   'vibeQuiz.useHeuristicMode',
+  'vibeQuiz.selectSourceFile',
+  'vibeQuiz.useCurrentFile',
+  'vibeQuiz.selectSourceMode',
+  'vibeQuiz.selectWorkspaceFolder',
+  'vibeQuiz.setGitDiffRange',
 ]);
 
 export class VibeQuizSidebarProvider implements vscode.WebviewViewProvider, vscode.Disposable {
@@ -155,11 +173,19 @@ export class VibeQuizSidebarProvider implements vscode.WebviewViewProvider, vsco
 
   private async buildState(): Promise<SidebarState> {
     const settings = getAiSettings();
+    const launchSettings = getLaunchSettings();
     const providerNeedsKey = requiresApiKey(settings);
     const apiKey = await getApiKey(this.extensionContext.secrets, settings.provider);
     const modeStatus = createModeStatus(settings, Boolean(apiKey) || !providerNeedsKey);
     const stats = getQuizStats(this.extensionContext.globalState);
-    const extraction = await extractQuizContext();
+    const activeSession = getActiveSession(this.extensionContext.workspaceState);
+    const extraction = await extractQuizContext({
+      sourceMode: launchSettings.sourceMode,
+      selectedFilePath: launchSettings.selectedFile,
+      workspaceFolderPath: launchSettings.workspaceFolder,
+      gitBaseRef: launchSettings.gitBaseRef,
+      gitHeadRef: launchSettings.gitHeadRef,
+    });
 
     if (!extraction.ok) {
       return {
@@ -174,6 +200,18 @@ export class VibeQuizSidebarProvider implements vscode.WebviewViewProvider, vsco
             ? 'Key locked in VS Code Secret Storage'
             : 'Secure BYOK not configured yet'
           : 'This endpoint can run without a stored key',
+        sourceModeLabel: sourceModeLabel(launchSettings.sourceMode),
+        sourceDescription: describeSourceMode(launchSettings.sourceMode),
+        sessionActive: Boolean(activeSession),
+        sessionLabel: activeSession ? `Started ${formatSessionTime(activeSession.startedAt)}` : 'No active session',
+        sessionDetail: activeSession
+          ? `${activeSession.touchedFiles.length} touched file${activeSession.touchedFiles.length === 1 ? '' : 's'} in ${activeSession.workspaceName}`
+          : 'Start a manual vibe-coding session to quiz the changes made after that point.',
+        sessionPrimaryCommand: activeSession ? 'vibeQuiz.endSession' : 'vibeQuiz.startSession',
+        sessionPrimaryLabel: activeSession ? 'Quiz Session' : 'Start Session',
+        selectedFileLabel: resolvePathLabel(launchSettings.selectedFile, 'Auto'),
+        selectedFolderLabel: resolveFolderLabel(launchSettings.workspaceFolder),
+        gitRangeLabel: `${launchSettings.gitBaseRef}..${launchSettings.gitHeadRef}`,
         activeFile: 'No active code file',
         activeFocus: 'Open a code file to warm up the launcher.',
         activeMeta: 'Command, status bar, or title button',
@@ -186,16 +224,20 @@ export class VibeQuizSidebarProvider implements vscode.WebviewViewProvider, vsco
     }
 
     const context = extraction.context;
-    const focusMeta = context.changeContext
-      ? `${context.changeContext.label} • ${context.changeContext.range}`
-      : context.selectionRange
-        ? `${context.selectionRange} • selection`
-        : `${context.lineCount} lines • ${context.languageId}`;
-    const focusHint = context.changeContext
-      ? 'Questions will prioritize the code you changed most recently.'
-      : context.selectionText
-        ? 'Questions will lock onto the selection before looking at the rest of the file.'
-        : 'Questions will use the nearest symbol or the active file when context is weak.';
+    const focusMeta = context.isChunkedSession && context.changeChunks?.length
+      ? `${context.changeChunks.length} ranked chunks - top ${context.changeChunks[0].range}`
+      : context.changeContext
+        ? `${context.changeContext.label} - ${context.changeContext.range}`
+        : context.selectionRange
+          ? `${context.selectionRange} - selection`
+          : `${context.lineCount} lines - ${context.languageId}`;
+    const focusHint = context.isChunkedSession && context.changeChunks?.length
+      ? 'Large changes are split into ranked chunks so the quiz can stay grounded.'
+      : context.changeContext
+        ? 'Questions will prioritize the code you changed most recently.'
+        : context.selectionText
+          ? 'Questions will lock onto the selection before looking at the rest of the file.'
+          : 'Questions will use the nearest symbol or the active file when context is weak.';
 
     return {
       modeLabel: modeStatus.label,
@@ -209,6 +251,18 @@ export class VibeQuizSidebarProvider implements vscode.WebviewViewProvider, vsco
           ? 'Key locked in VS Code Secret Storage'
           : 'Secure BYOK not configured yet'
         : 'This endpoint can run without a stored key',
+      sourceModeLabel: sourceModeLabel(launchSettings.sourceMode),
+      sourceDescription: describeSourceMode(launchSettings.sourceMode),
+      sessionActive: Boolean(activeSession),
+      sessionLabel: activeSession ? `Started ${formatSessionTime(activeSession.startedAt)}` : 'No active session',
+      sessionDetail: activeSession
+        ? `${activeSession.touchedFiles.length} touched file${activeSession.touchedFiles.length === 1 ? '' : 's'} in ${activeSession.workspaceName}`
+        : 'Start a manual vibe-coding session to quiz the changes made after that point.',
+      sessionPrimaryCommand: activeSession ? 'vibeQuiz.endSession' : 'vibeQuiz.startSession',
+      sessionPrimaryLabel: activeSession ? 'Quiz Session' : 'Start Session',
+      selectedFileLabel: resolvePathLabel(launchSettings.selectedFile, 'Auto'),
+      selectedFolderLabel: resolveFolderLabel(launchSettings.workspaceFolder),
+      gitRangeLabel: `${launchSettings.gitBaseRef}..${launchSettings.gitHeadRef}`,
       activeFile: context.fileName,
       activeFocus: context.focusLabel,
       activeMeta: focusMeta,
@@ -233,6 +287,32 @@ function providerTitle(provider: NonNullable<ReturnType<typeof getAiSettings>['p
     default:
       return 'OpenAI';
   }
+}
+
+function describeSourceMode(sourceMode: ReturnType<typeof getLaunchSettings>['sourceMode']): string {
+  switch (sourceMode) {
+    case 'selectedFile':
+      return 'Pin one file and VibeQuiz will keep quizzing that file until you choose a different source.';
+    case 'workspaceFolder':
+      return 'Pick a folder and VibeQuiz will choose a changed source file inside it.';
+    case 'gitRange':
+      return 'Pick a folder and commit refs. VibeQuiz will compare that range and choose a changed file.';
+    case 'currentFile':
+    default:
+      return 'Default mode. Start with the active editor, then fall back to recent workspace changes or the latest commit diff.';
+  }
+}
+
+function resolveFolderLabel(configuredPath: string): string {
+  return resolvePathLabel(configuredPath, 'Auto');
+}
+
+function resolvePathLabel(configuredPath: string, fallback: string): string {
+  if (!configuredPath) {
+    return fallback;
+  }
+
+  return configuredPath.split(/[\\/]/).pop() || configuredPath;
 }
 
 function formatLastQuiz(value?: string): string {
@@ -263,6 +343,18 @@ function formatLastQuiz(value?: string): string {
   }
 
   return lastQuiz.toLocaleDateString();
+}
+
+function formatSessionTime(value: string): string {
+  const startedAt = new Date(value);
+  if (Number.isNaN(startedAt.getTime())) {
+    return 'just now';
+  }
+
+  return startedAt.toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 function getNonce(): string {

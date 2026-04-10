@@ -10,6 +10,7 @@ export class VibeQuizPanel {
   private readonly extensionUri: vscode.Uri;
   private state: PanelState;
   private submitHandler: SubmitHandler;
+  private webviewReady = false;
   private readonly disposables: vscode.Disposable[] = [];
 
   public static render(
@@ -69,11 +70,17 @@ export class VibeQuizPanel {
 
   private update(state: PanelState): void {
     this.state = state;
-    this.panel.webview.html = this.getHtml(this.panel.webview);
+    if (this.webviewReady) {
+      void this.postPanelState();
+    }
   }
 
   private async handleMessage(message: { type?: string; payload?: SubmitPayload }): Promise<void> {
     switch (message.type) {
+      case 'ready':
+        this.webviewReady = true;
+        await this.postPanelState();
+        return;
       case 'submitQuiz': {
         if (!message.payload) {
           return;
@@ -86,6 +93,7 @@ export class VibeQuizPanel {
             feedback: response.feedback,
             stats: response.stats,
             resultSummary: response.summary,
+            chunkWeakAreas: response.chunkWeakAreas,
           };
           await this.panel.webview.postMessage({
             type: 'quizFeedback',
@@ -132,6 +140,13 @@ export class VibeQuizPanel {
     <script nonce="${nonce}" src="${scriptUri}"></script>
   </body>
 </html>`;
+  }
+
+  private async postPanelState(): Promise<void> {
+    await this.panel.webview.postMessage({
+      type: 'panelState',
+      payload: this.state,
+    });
   }
 }
 

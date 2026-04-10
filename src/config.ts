@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { AiProvider, ModeStatus, QuizMode } from './types';
+import { AiProvider, ModeStatus, QuizMode, QuizSourceMode } from './types';
 
 export interface AiSettings {
   mode: QuizMode;
@@ -8,6 +8,14 @@ export interface AiSettings {
   baseUrl: string;
   timeoutMs: number;
   anthropicVersion: string;
+}
+
+export interface LaunchSettings {
+  sourceMode: QuizSourceMode;
+  selectedFile: string;
+  workspaceFolder: string;
+  gitBaseRef: string;
+  gitHeadRef: string;
 }
 
 const CONFIG_ROOT = 'vibeQuiz';
@@ -33,6 +41,23 @@ export function getAiSettings(): AiSettings {
   };
 }
 
+export function getLaunchSettings(): LaunchSettings {
+  const config = vscode.workspace.getConfiguration(CONFIG_ROOT);
+  const sourceMode = config.get<QuizSourceMode>('context.sourceMode', 'currentFile');
+  const selectedFile = config.get<string>('context.selectedFile', '').trim();
+  const workspaceFolder = config.get<string>('context.workspaceFolder', '').trim();
+  const gitBaseRef = config.get<string>('context.gitBaseRef', 'HEAD~1').trim() || 'HEAD~1';
+  const gitHeadRef = config.get<string>('context.gitHeadRef', 'HEAD').trim() || 'HEAD';
+
+  return {
+    sourceMode,
+    selectedFile,
+    workspaceFolder,
+    gitBaseRef,
+    gitHeadRef,
+  };
+}
+
 export async function setQuizMode(mode: QuizMode): Promise<void> {
   await vscode.workspace
     .getConfiguration(CONFIG_ROOT)
@@ -55,6 +80,30 @@ export async function setAiBaseUrl(baseUrl: string): Promise<void> {
   await vscode.workspace
     .getConfiguration(CONFIG_ROOT)
     .update('ai.baseUrl', baseUrl.trim(), vscode.ConfigurationTarget.Global);
+}
+
+export async function setSourceMode(sourceMode: QuizSourceMode): Promise<void> {
+  await vscode.workspace
+    .getConfiguration(CONFIG_ROOT)
+    .update('context.sourceMode', sourceMode, vscode.ConfigurationTarget.Global);
+}
+
+export async function setWorkspaceFolderPath(workspaceFolder: string): Promise<void> {
+  await vscode.workspace
+    .getConfiguration(CONFIG_ROOT)
+    .update('context.workspaceFolder', workspaceFolder.trim(), vscode.ConfigurationTarget.Global);
+}
+
+export async function setSelectedFilePath(selectedFile: string): Promise<void> {
+  await vscode.workspace
+    .getConfiguration(CONFIG_ROOT)
+    .update('context.selectedFile', selectedFile.trim(), vscode.ConfigurationTarget.Global);
+}
+
+export async function setGitDiffRange(baseRef: string, headRef: string): Promise<void> {
+  const config = vscode.workspace.getConfiguration(CONFIG_ROOT);
+  await config.update('context.gitBaseRef', baseRef.trim() || 'HEAD~1', vscode.ConfigurationTarget.Global);
+  await config.update('context.gitHeadRef', headRef.trim() || 'HEAD', vscode.ConfigurationTarget.Global);
 }
 
 export function getDefaultModel(provider: AiProvider): string {
@@ -100,11 +149,12 @@ export function isLocalBaseUrl(baseUrl: string): boolean {
 export function createModeStatus(
   settings: AiSettings,
   keyConfigured: boolean,
-  override?: Partial<Pick<ModeStatus, 'label' | 'detail'>>,
+  override?: Partial<Pick<ModeStatus, 'label' | 'detail' | 'mode'>>,
 ): ModeStatus {
   const providerNeedsKey = requiresApiKey(settings);
+  const effectiveMode = override?.mode ?? settings.mode;
 
-  if (settings.mode === 'ai') {
+  if (effectiveMode === 'ai') {
     return {
       mode: 'ai',
       label: override?.label ?? `AI mode - ${providerLabel(settings.provider)}`,
@@ -144,5 +194,19 @@ export function providerLabel(provider: AiProvider): string {
     case 'openai':
     default:
       return 'OpenAI';
+  }
+}
+
+export function sourceModeLabel(sourceMode: QuizSourceMode): string {
+  switch (sourceMode) {
+    case 'selectedFile':
+      return 'Selected File';
+    case 'workspaceFolder':
+      return 'Workspace Folder';
+    case 'gitRange':
+      return 'Git Commit Range';
+    case 'currentFile':
+    default:
+      return 'Smart Current';
   }
 }

@@ -1,11 +1,12 @@
-import { QuizQuestion, QuizResultSummary, ReflectionItem } from './types';
+import { ChunkWeakArea, QuizQuestion, QuizResultSummary, ReflectionItem } from './types';
 
 export function generateReflection(
   questions: QuizQuestion[],
   answers: Record<string, string>,
-): { feedback: ReflectionItem[]; weakAreas: string[]; summary: QuizResultSummary } {
+): { feedback: ReflectionItem[]; weakAreas: string[]; summary: QuizResultSummary; chunkWeakAreas: ChunkWeakArea[] } {
   const feedback: ReflectionItem[] = [];
   const weakAreas = new Set<string>();
+  const chunkWeakAreas = new Map<string, { label: string; weakAreas: Set<string> }>();
   let correct = 0;
   let skipped = 0;
 
@@ -22,6 +23,7 @@ export function generateReflection(
       skipped += 1;
       const weakArea = weakAreaFor(question.type);
       weakAreas.add(weakArea);
+      trackChunkWeakArea(chunkWeakAreas, question, weakArea);
       feedback.push({
         questionId: question.id,
         headline: 'Skipped question',
@@ -45,6 +47,7 @@ export function generateReflection(
 
     const weakArea = weakAreaFor(question.type);
     weakAreas.add(weakArea);
+    trackChunkWeakArea(chunkWeakAreas, question, weakArea);
     feedback.push({
       questionId: question.id,
       headline: 'Not quite',
@@ -62,7 +65,29 @@ export function generateReflection(
       total: questions.length,
       skipped,
     },
+    chunkWeakAreas: Array.from(chunkWeakAreas.entries()).map(([chunkId, value]) => ({
+      chunkId,
+      label: value.label,
+      weakAreas: Array.from(value.weakAreas).slice(0, 4),
+    })),
   };
+}
+
+function trackChunkWeakArea(
+  chunkWeakAreas: Map<string, { label: string; weakAreas: Set<string> }>,
+  question: QuizQuestion,
+  weakArea: string,
+): void {
+  if (!question.chunkId) {
+    return;
+  }
+
+  const current = chunkWeakAreas.get(question.chunkId) ?? {
+    label: question.chunkLabel ?? question.target ?? question.chunkId,
+    weakAreas: new Set<string>(),
+  };
+  current.weakAreas.add(weakArea);
+  chunkWeakAreas.set(question.chunkId, current);
 }
 
 function weakAreaFor(type: QuizQuestion['type']): string {

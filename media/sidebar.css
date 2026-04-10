@@ -134,6 +134,10 @@ body {
   line-height: 1.5;
 }
 
+.supporting-copy-tight {
+  margin-top: 8px;
+}
+
 .totem {
   position: relative;
   width: 150px;

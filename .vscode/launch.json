@@ -8,7 +8,7 @@
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}"
       ],
-      "outFiles": [
+      "outFiles": [ 
         "${workspaceFolder}/dist/**/*.js"
       ],
       "preLaunchTask": "npm: compile"

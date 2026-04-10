@@ -19,6 +19,7 @@ interface AiQuestionResponse {
     options: string[];
     correctIndex: number;
     explanation: string;
+    chunkId: string | null;
   }>;
 }
 
@@ -52,6 +53,9 @@ export async function generateAiQuizQuestions(
       'Generate exactly 5 short, fair multiple-choice questions about the provided code context.',
       'Ground every question in the visible file context only. Do not invent repo-wide knowledge.',
       'If the context includes a change block, prioritize questions about the edit and its behavioral impact.',
+      'If the context includes sessionInfo or multiple changeChunks, treat this as one coding session rather than one isolated function.',
+      'Avoid repeating the same purpose question across all chunks. Mix contract, dependency, failure mode, design tradeoff, and edge case questions.',
+      'If changeChunks are present, attach each question to the best matching chunkId. Use null only when a question is intentionally cross-chunk.',
       'Avoid trivia, style nitpicks, trick questions, and school-exam tone.',
       'Vary the question types when possible.',
       'Each question must have 4 distinct options and exactly 1 best answer.',
@@ -71,7 +75,7 @@ export async function generateAiQuizQuestions(
           items: {
             type: 'object',
             additionalProperties: false,
-            required: ['type', 'prompt', 'options', 'correctIndex', 'explanation'],
+            required: ['type', 'prompt', 'options', 'correctIndex', 'explanation', 'chunkId'],
             properties: {
               type: {
                 type: 'string',
@@ -110,6 +114,18 @@ export async function generateAiQuizQuestions(
                 minLength: 12,
                 maxLength: 220,
               },
+              chunkId: {
+                anyOf: [
+                  {
+                    type: 'string',
+                    minLength: 3,
+                    maxLength: 64,
+                  },
+                  {
+                    type: 'null',
+                  },
+                ],
+              },
             },
           },
         },
@@ -118,11 +134,14 @@ export async function generateAiQuizQuestions(
   });
 
   const prompts = new Set<string>();
+  const chunkById = new Map((context.changeChunks ?? []).map((chunk) => [chunk.id, chunk]));
   const questions = response.questions
     .map((question, index) => ({
       id: `ai-${question.type}-${index + 1}`,
       type: question.type,
       prompt: normalizePrompt(question.prompt),
+      chunkId: question.chunkId ?? undefined,
+      chunkLabel: question.chunkId ? chunkById.get(question.chunkId)?.label : undefined,
       options: question.options.map((option, optionIndex) => ({
         id: OPTION_IDS[optionIndex],
         text: normalizePrompt(option),
@@ -500,6 +519,17 @@ function buildQuizInput(context: QuizContext): string {
       focusLabel: context.focusLabel,
       focusKind: context.focusKind,
       selectionRange: context.selectionRange,
+      sessionInfo: context.sessionInfo
+        ? {
+            id: context.sessionInfo.id,
+            startedAt: context.sessionInfo.startedAt,
+            endedAt: context.sessionInfo.endedAt,
+            workspaceName: context.sessionInfo.workspaceName,
+            baseRefLabel: context.sessionInfo.baseRefLabel,
+            touchedFileCount: context.sessionInfo.touchedFileCount,
+            changedFileCount: context.sessionInfo.changedFileCount,
+          }
+        : undefined,
       changeContext: context.changeContext
         ? {
             source: context.changeContext.source,
@@ -510,6 +540,21 @@ function buildQuizInput(context: QuizContext): string {
             previousSnippet: context.changeContext.previousSnippet,
           }
         : undefined,
+      isChunkedSession: context.isChunkedSession,
+      changeChunks: context.changeChunks?.slice(0, 4).map((chunk) => ({
+        id: chunk.id,
+        label: chunk.label,
+        symbolName: chunk.symbolName,
+        fileName: chunk.fileName,
+        languageId: chunk.languageId,
+        type: chunk.type,
+        range: chunk.range,
+        lineCount: chunk.lineCount,
+        score: chunk.score,
+        reasons: chunk.reasons,
+        currentSnippet: chunk.currentSnippet,
+        previousSnippet: chunk.previousSnippet,
+      })),
       imports: context.imports.slice(0, 5),
       exports: context.exports.slice(0, 5),
       candidateFunctions: context.candidateFunctions.slice(0, 5),

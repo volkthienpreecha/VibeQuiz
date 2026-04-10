@@ -18,10 +18,13 @@ export interface QuizContext {
   hasStateMutation: boolean;
   candidateFunctions: string[];
   changeContext?: ChangeContext;
+  changeChunks?: ChangeChunk[];
+  isChunkedSession?: boolean;
+  sessionInfo?: SessionInfo;
 }
 
 export interface ChangeContext {
-  source: 'dirty-buffer' | 'git-head' | 'last-commit';
+  source: 'dirty-buffer' | 'git-head' | 'last-commit' | 'git-range' | 'session';
   type: 'added' | 'modified' | 'removed';
   label: string;
   range: string;
@@ -30,8 +33,25 @@ export interface ChangeContext {
   previousSnippet?: string;
 }
 
+export interface ChangeChunk {
+  id: string;
+  label: string;
+  symbolName?: string;
+  fileName?: string;
+  filePath?: string;
+  languageId?: string;
+  type: ChangeContext['type'];
+  range: string;
+  lineCount: number;
+  score: number;
+  reasons: string[];
+  currentSnippet: string;
+  previousSnippet?: string;
+}
+
 export type QuizMode = 'heuristic' | 'ai';
 export type AiProvider = 'openai' | 'anthropic' | 'gemini' | 'openaiCompatible';
+export type QuizSourceMode = 'currentFile' | 'selectedFile' | 'workspaceFolder' | 'gitRange';
 
 export type QuestionType =
   | 'purpose'
@@ -54,6 +74,8 @@ export interface QuizQuestion {
   type: QuestionType;
   prompt: string;
   target?: string;
+  chunkId?: string;
+  chunkLabel?: string;
   options: QuizOption[];
   correctOptionId: QuizOptionId;
   explanation: string;
@@ -72,12 +94,30 @@ export interface QuizStats {
   lastQuizAt?: string;
   streak: number;
   recentWeakAreas: string[];
+  recentChunkWeakAreas: ChunkWeakArea[];
 }
 
 export interface QuizResultSummary {
   correct: number;
   total: number;
   skipped: number;
+}
+
+export interface ChunkWeakArea {
+  chunkId: string;
+  label: string;
+  weakAreas: string[];
+}
+
+export interface SessionInfo {
+  id: string;
+  startedAt: string;
+  endedAt?: string;
+  workspaceName: string;
+  workspacePath: string;
+  baseRefLabel: string;
+  touchedFileCount: number;
+  changedFileCount: number;
 }
 
 export interface ModeStatus {
@@ -90,17 +130,22 @@ export interface ModeStatus {
 }
 
 export interface PanelState {
-  kind: 'quiz' | 'empty';
+  kind: 'quiz' | 'empty' | 'loading';
   title: string;
   subtitle: string;
   contextTag?: string;
   modeStatus: ModeStatus;
   emptyMessage?: string;
+  loadingProgress?: number;
+  loadingStage?: string;
+  loadingDetail?: string;
+  loadingDetails?: string[];
   quizContext?: QuizContext;
   questions?: QuizQuestion[];
   stats: QuizStats;
   feedback?: ReflectionItem[];
   resultSummary?: QuizResultSummary;
+  chunkWeakAreas?: ChunkWeakArea[];
 }
 
 export interface SubmitPayload {
@@ -111,6 +156,7 @@ export interface SubmitResponse {
   feedback: ReflectionItem[];
   stats: QuizStats;
   summary: QuizResultSummary;
+  chunkWeakAreas?: ChunkWeakArea[];
 }
 
 export type ExtractionResult =

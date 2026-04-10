@@ -23,12 +23,19 @@
     "onStartupFinished",
     "onView:vibeQuiz.sidebar",
     "onCommand:vibeQuiz.quizMe",
+    "onCommand:vibeQuiz.startSession",
+    "onCommand:vibeQuiz.endSession",
     "onCommand:vibeQuiz.setApiKey",
     "onCommand:vibeQuiz.clearApiKey",
     "onCommand:vibeQuiz.enableAiMode",
     "onCommand:vibeQuiz.useHeuristicMode",
     "onCommand:vibeQuiz.selectAiProvider",
     "onCommand:vibeQuiz.setAiModel",
+    "onCommand:vibeQuiz.selectSourceMode",
+    "onCommand:vibeQuiz.selectSourceFile",
+    "onCommand:vibeQuiz.useCurrentFile",
+    "onCommand:vibeQuiz.selectWorkspaceFolder",
+    "onCommand:vibeQuiz.setGitDiffRange",
     "onCommand:vibeQuiz.openSettings"
   ],
   "main": "./dist/extension.js",
@@ -42,6 +49,16 @@
           "light": "media/vibequiz-command-light.svg",
           "dark": "media/vibequiz-command-dark.svg"
         }
+      },
+      {
+        "command": "vibeQuiz.startSession",
+        "title": "Start Session",
+        "category": "VibeQuiz"
+      },
+      {
+        "command": "vibeQuiz.endSession",
+        "title": "End Session / Quiz Session",
+        "category": "VibeQuiz"
       },
       {
         "command": "vibeQuiz.setApiKey",
@@ -71,6 +88,31 @@
       {
         "command": "vibeQuiz.setAiModel",
         "title": "Set AI Model",
+        "category": "VibeQuiz"
+      },
+      {
+        "command": "vibeQuiz.selectSourceMode",
+        "title": "Select Launch Source",
+        "category": "VibeQuiz"
+      },
+      {
+        "command": "vibeQuiz.selectSourceFile",
+        "title": "Select Source File",
+        "category": "VibeQuiz"
+      },
+      {
+        "command": "vibeQuiz.useCurrentFile",
+        "title": "Use Current File",
+        "category": "VibeQuiz"
+      },
+      {
+        "command": "vibeQuiz.selectWorkspaceFolder",
+        "title": "Select Workspace Folder",
+        "category": "VibeQuiz"
+      },
+      {
+        "command": "vibeQuiz.setGitDiffRange",
+        "title": "Set Git Diff Range",
         "category": "VibeQuiz"
       },
       {
@@ -127,6 +169,42 @@
           "default": 20000,
           "minimum": 3000,
           "markdownDescription": "Timeout for AI requests in milliseconds.",
+          "scope": "machine-overridable"
+        },
+        "vibeQuiz.context.sourceMode": {
+          "type": "string",
+          "enum": [
+            "currentFile",
+            "selectedFile",
+            "workspaceFolder",
+            "gitRange"
+          ],
+          "default": "currentFile",
+          "markdownDescription": "Controls whether VibeQuiz starts with the active file and then falls back to recent repo changes, uses a pinned file, scans changed files in a workspace folder, or compares a selected git commit range.",
+          "scope": "machine-overridable"
+        },
+        "vibeQuiz.context.selectedFile": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Pinned source file path used when `vibeQuiz.context.sourceMode` is `selectedFile`.",
+          "scope": "machine-overridable"
+        },
+        "vibeQuiz.context.workspaceFolder": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Workspace folder path used for folder and git-range launch modes. Leave blank to auto-pick from the active editor or first workspace folder.",
+          "scope": "machine-overridable"
+        },
+        "vibeQuiz.context.gitBaseRef": {
+          "type": "string",
+          "default": "HEAD~1",
+          "markdownDescription": "Base git ref used when `vibeQuiz.context.sourceMode` is `gitRange`.",
+          "scope": "machine-overridable"
+        },
+        "vibeQuiz.context.gitHeadRef": {
+          "type": "string",
+          "default": "HEAD",
+          "markdownDescription": "Head git ref used when `vibeQuiz.context.sourceMode` is `gitRange`.",
           "scope": "machine-overridable"
         }
       }

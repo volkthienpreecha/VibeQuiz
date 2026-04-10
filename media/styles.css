@@ -338,6 +338,107 @@ body::after {
   gap: 18px;
 }
 
+.chunk-panel {
+  margin-bottom: 18px;
+  padding: 20px;
+}
+
+.chunk-head {
+  margin-bottom: 12px;
+}
+
+.chunk-pill-row {
+  display: grid;
+  gap: 12px;
+}
+
+.chunk-pill {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  background: rgba(6, 4, 11, 0.48);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 100ms ease, border-color 100ms ease, background 100ms ease;
+}
+
+.chunk-pill:hover {
+  border-color: rgba(206, 130, 255, 0.42);
+  transform: translateY(-1px);
+}
+
+.chunk-pill-active {
+  border-color: rgba(206, 130, 255, 0.78);
+  background: rgba(206, 130, 255, 0.12);
+}
+
+.chunk-pill-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ce82ff 0%, #a877ef 100%);
+  box-shadow: 0 6px 0 0 var(--accent-shadow);
+  color: #120a18;
+  font-weight: 800;
+}
+
+.chunk-pill-copy {
+  display: grid;
+  gap: 3px;
+}
+
+.chunk-pill-copy strong {
+  font-size: 1rem;
+}
+
+.chunk-pill-copy span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.chunk-group {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.chunk-group-active {
+  border-color: rgba(206, 130, 255, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(206, 130, 255, 0.12);
+}
+
+.chunk-group-head,
+.chunk-meta,
+.question-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.chunk-question-list {
+  display: grid;
+  gap: 16px;
+}
+
+.chunk-snippet {
+  margin-top: 0;
+}
+
 .question-card {
   padding: 22px;
 }
@@ -575,6 +676,10 @@ body::after {
   color: var(--muted);
 }
 
+.loading-detail {
+  margin-top: 10px;
+}
+
 .submit-error {
   margin: 0;
 }
@@ -584,11 +689,92 @@ body::after {
   margin-top: 24px;
 }
 
+.chunk-weak-area-stack {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.chunk-weak-card {
+  padding: 16px;
+  border-radius: 20px;
+  border: 2px solid var(--line);
+  background: rgba(6, 4, 11, 0.42);
+}
+
+.chunk-weak-card strong {
+  display: block;
+  margin-bottom: 10px;
+}
+
 .result-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
+}
+
+.loading-track {
+  position: relative;
+  margin: 18px 0 14px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(6, 4, 11, 0.52);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.loading-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ce82ff 0%, #a877ef 100%);
+  box-shadow: 0 0 24px rgba(206, 130, 255, 0.28);
+}
+
+.loading-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.loading-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.06);
+  background: rgba(6, 4, 11, 0.42);
+  color: var(--muted);
+}
+
+.loading-step-current {
+  border-color: rgba(206, 130, 255, 0.34);
+  color: var(--ink);
+}
+
+.loading-step-done {
+  border-color: rgba(198, 247, 167, 0.34);
+  color: var(--ink);
+}
+
+.loading-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  flex: 0 0 auto;
+}
+
+.loading-step-current .loading-dot {
+  background: #ce82ff;
+  box-shadow: 0 0 0 6px rgba(206, 130, 255, 0.12);
+}
+
+.loading-step-done .loading-dot {
+  background: #c6f7a7;
+  box-shadow: 0 0 0 6px rgba(198, 247, 167, 0.12);
 }
 
 .result-chip {
@@ -719,6 +905,8 @@ body::after {
 
   .section-head,
   .question-topline,
+  .chunk-group-head,
+  .chunk-meta,
   .footer-note {
     flex-direction: column;
     align-items: flex-start;
